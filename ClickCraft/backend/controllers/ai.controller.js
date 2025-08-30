@@ -1,10 +1,6 @@
 import fs from "fs";
 
 export const initialPrompt = async (req, res) => {
-    // console.log('=== Backend Request Received ===');
-    // console.log('Request body:', req.body);
-    // console.log('Request files:', req.files);
-    // console.log('Request headers:', req.headers);
 
     const promptStructure ={
   "initialPrompt": "",
@@ -28,32 +24,27 @@ export const initialPrompt = async (req, res) => {
     const mode = req.body.mode;
     const imageFile = req.files; // Files come in req.files when using multer
     
-    console.log('Extracted data:', { prompt, mode, hasImageFile: !!imageFile, imageFileCount: imageFile?.length || 0 });
-    
     if(!prompt || !mode){
-        console.log('Validation failed: missing prompt or mode');
         return res.status(400).json({ message: "Prompt and mode are required" });
+        console.log('Validation failed: missing prompt or mode');
     }
 
     if(!imageFile && mode === "with_photo"){
-        console.log('Validation failed: missing image file for with_photo mode');
         return res.status(400).json({ message: "Image file is required || error sending to backend" });
+        console.log('Validation failed: missing image file for with_photo mode');
     }
     promptStructure.initialPrompt = prompt;
     promptStructure.mode = mode;
 
-    if(imageFile){
+    if(!!imageFile){
         // Since we're using memoryStorage, the file data is in imageFile.buffer
         promptStructure.imageFilebase64 = imageFile[0].buffer.toString("base64");
+        console.log('Image file received');
     }
-
-
-    
     console.log(promptStructure);
+
     
     res.json({ 
-        message: "Initial prompt received",
-        // receivedData: { prompt, mode, hasImageFile: !!imageFile }
+        message: "Initial prompt received"
     }).status(200); 
-    // }
 }

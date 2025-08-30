@@ -19,11 +19,7 @@ const thumbnailReducer = (state, action) => {
     case 'SET_MODE':
       return { ...state, mode: action.payload, currentStep: 'prompt_input' };
     case 'SET_PROMPT':
-      console.log('SET_PROMPT reducer called with:', action.payload);
-      console.log('Previous state prompt:', state.prompt);
-      const newState = { ...state, prompt: action.payload };
-      console.log('New state prompt:', newState.prompt);
-      return newState;
+      return { ...state, prompt: action.payload };
     case 'SET_IMAGE_FILE':
       return { ...state, imageFile: action.payload };
     case 'SET_QUESTIONS':

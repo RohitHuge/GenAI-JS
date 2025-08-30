@@ -66,9 +66,6 @@ const ThumbnailGenerator = () => {
   const handlePromptSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('Form submitted with prompt:', prompt);
-    console.log('Current state:', { mode, prompt, imageFile, currentStep });
-    
     if (!prompt.trim()) {
       addToast('Please enter a prompt', 'error');
       return;
@@ -86,39 +83,24 @@ const ThumbnailGenerator = () => {
     
     try {
       // Send data to backend
-      console.log('Before FormData creation - prompt:', prompt, 'type:', typeof prompt);
-      console.log('Before FormData creation - mode:', mode, 'type:', typeof mode);
-      console.log('Before FormData creation - imageFile:', imageFile, 'type:', typeof imageFile);
-      
       const formData = new FormData();
       formData.append('prompt', prompt || '');
       formData.append('mode', mode || '');
       if (mode === 'with_photo' && imageFile) {
         formData.append('imageFile', imageFile);
       }
-
-      console.log('After FormData creation - FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value, 'type:', typeof value);
-      }
-      
-      console.log('FormData object:', formData);
-      console.log('FormData size:', formData.entries().length);
       const response = await fetch(`${backendUrl}/air/initialprompt`, {
         method: 'POST',
-        // headers: {
-        //   'Content-Type': 'multipart/form-data',
-        // },
         body: formData,
       });
       
       if (!response.ok) {
+        console.log('HTTP error! status:', response.status);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
       console.log('Backend response:', data);
-      
       // Simulate AI thinking for now
       // for (let i = 0; i < thinkingMessages.length; i++) {
       //   setCurrentMessageIndex(i);
@@ -322,7 +304,6 @@ const ThumbnailGenerator = () => {
             id="prompt"
             value={prompt}
             onChange={(e) => {
-              console.log('Textarea onChange:', e.target.value);
               dispatch({ type: 'SET_PROMPT', payload: e.target.value });
             }}
             placeholder="Describe the thumbnail you want to generate... (e.g., 'A modern tech blog header with blue gradients and clean typography')"
