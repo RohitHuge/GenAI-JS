@@ -86,20 +86,24 @@ const ThumbnailGenerator = () => {
     
     try {
       // Send data to backend
+      console.log('Before FormData creation - prompt:', prompt, 'type:', typeof prompt);
+      console.log('Before FormData creation - mode:', mode, 'type:', typeof mode);
+      console.log('Before FormData creation - imageFile:', imageFile, 'type:', typeof imageFile);
+      
       const formData = new FormData();
-      formData.append('prompt', prompt);
-      formData.append('mode', mode);
+      formData.append('prompt', prompt || '');
+      formData.append('mode', mode || '');
       if (mode === 'with_photo' && imageFile) {
         formData.append('imageFile', imageFile);
       }
 
-      console.log('Sending data:', { prompt, mode, hasImage: !!imageFile });
-      console.log('FormData contents:');
+      console.log('After FormData creation - FormData entries:');
       for (let [key, value] of formData.entries()) {
-        console.log(`${key}:`, value);
+        console.log(`  ${key}:`, value, 'type:', typeof value);
       }
       
       console.log('FormData object:', formData);
+      console.log('FormData size:', formData.entries().length);
       const response = await fetch(`${backendUrl}/air/initialprompt`, {
         method: 'POST',
         // headers: {
