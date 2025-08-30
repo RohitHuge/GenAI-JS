@@ -3,6 +3,8 @@ import { useThumbnail } from '../components/ThumbnailContext';
 import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
+import { backendUrl } from '../config';
+import log from '../../utilities/log'; 
 
 const ThumbnailGenerator = () => {
   const { 
@@ -64,6 +66,9 @@ const ThumbnailGenerator = () => {
   const handlePromptSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('Form submitted with prompt:', prompt);
+    console.log('Current state:', { mode, prompt, imageFile, currentStep });
+    
     if (!prompt.trim()) {
       addToast('Please enter a prompt', 'error');
       return;
@@ -77,13 +82,53 @@ const ThumbnailGenerator = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'thinking' });
 
-    // Simulate AI thinking
-    const thinkingMessages = ["Thinking...", "Refining prompt...", "Generating questions..."];
+    // const thinkingMessages = ["Thinking...", "Refining prompt...", "Generating questions..."];
     
-    for (let i = 0; i < thinkingMessages.length; i++) {
-      setCurrentMessageIndex(i);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Send data to backend
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('mode', mode);
+      if (mode === 'with_photo' && imageFile) {
+        formData.append('imageFile', imageFile);
+      }
+
+      console.log('Sending data:', { prompt, mode, hasImage: !!imageFile });
+      console.log('FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
+      console.log('FormData object:', formData);
+      const response = await fetch(`${backendUrl}/air/initialprompt`, {
+        method: 'POST',
+        // headers: {
+        //   'Content-Type': 'multipart/form-data',
+        // },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Backend response:', data);
+      
+      // Simulate AI thinking for now
+      // for (let i = 0; i < thinkingMessages.length; i++) {
+      //   setCurrentMessageIndex(i);
+      //   await new Promise(resolve => setTimeout(resolve, 2000));
+      // }
+      setCurrentMessageIndex(0);
+    } catch (error) {
+      log('Error:', error.message);
+      addToast('Failed to process request', 'error');
+      dispatch({ type: 'SET_LOADING', payload: false });
+      return;
     }
+
+
 
     // Set questions and move to questions step
     dispatch({ type: 'SET_QUESTIONS', payload: mockQuestions });
@@ -272,7 +317,10 @@ const ThumbnailGenerator = () => {
           <textarea
             id="prompt"
             value={prompt}
-            onChange={(e) => dispatch({ type: 'SET_PROMPT', payload: e.target.value, })}
+            onChange={(e) => {
+              console.log('Textarea onChange:', e.target.value);
+              dispatch({ type: 'SET_PROMPT', payload: e.target.value });
+            }}
             placeholder="Describe the thumbnail you want to generate... (e.g., 'A modern tech blog header with blue gradients and clean typography')"
             className="w-full h-32 px-4 py-3 border border-dark-border rounded-lg focus:ring-2 focus:ring-neon-orange focus:border-transparent bg-dark-bg-card text-dark-text placeholder-dark-text-secondary resize-none transition-all duration-200"
             required
