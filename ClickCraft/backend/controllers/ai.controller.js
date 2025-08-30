@@ -1,10 +1,11 @@
-import fs from "fs";
+// import fs from "fs";
+import { segmentDetection } from "./llm.controllers.js/segmentDetection.js";
 
 export const initialPrompt = async (req, res) => {
 
     const promptStructure ={
   "initialPrompt": "",
-  "imageFilebase64": "",
+  "isImageBase64": false,
   "mode": "",
   "analysis": {
     "segment": "",
@@ -19,6 +20,10 @@ export const initialPrompt = async (req, res) => {
     }
   ]
 };
+
+    const imagedata = {
+        "imageFilebase64": "",
+    }
     // For FormData, the data comes in req.body
     const prompt = req.body.prompt;
     const mode = req.body.mode;
@@ -30,18 +35,26 @@ export const initialPrompt = async (req, res) => {
     }
 
     if(!imageFile && mode === "with_photo"){
-        return res.status(400).json({ message: "Image file is required || error sending to backend" });
         console.log('Validation failed: missing image file for with_photo mode');
+        return res.status(400).json({ message: "Image file is required || error sending to backend" });
     }
     promptStructure.initialPrompt = prompt;
     promptStructure.mode = mode;
 
-    if(!!imageFile){
+    if(mode === "with_photo"){
         // Since we're using memoryStorage, the file data is in imageFile.buffer
-        promptStructure.imageFilebase64 = imageFile[0].buffer.toString("base64");
+        imagedata.imageFilebase64 = imageFile[0].buffer.toString("base64");
+        promptStructure.isImageBase64 = true;
         console.log('Image file received');
     }
+
+
     console.log(promptStructure);
+    if(imagedata.imageFilebase64){
+        console.log(imagedata);
+    }
+
+    await segmentDetection(promptStructure);
 
     
     res.json({ 
