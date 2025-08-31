@@ -28,19 +28,20 @@ const ThumbnailGenerator = () => {
       q: "What style should the thumbnail have?",
       options: ["Modern", "Vintage", "Minimalist", "Bold"],
       answer: ""
-    },
-    {
-      id: 2,
-      q: "What emotion should it convey?",
-      options: ["Exciting", "Calm", "Professional", "Playful"],
-      answer: ""
-    },
-    {
-      id: 3,
-      q: "What color scheme do you prefer?",
-      options: ["Warm", "Cool", "Neutral", "Vibrant"],
-      answer: ""
     }
+    // },
+    // {
+    //   id: 2,
+    //   q: "What emotion should it convey?",
+    //   options: ["Exciting", "Calm", "Professional", "Playful"],
+    //   answer: ""
+    // },
+    // {
+    //   id: 3,
+    //   q: "What color scheme do you prefer?",
+    //   options: ["Warm", "Cool", "Neutral", "Vibrant"],
+    //   answer: ""
+    // }
   ];
 
   const mockThumbnails = [

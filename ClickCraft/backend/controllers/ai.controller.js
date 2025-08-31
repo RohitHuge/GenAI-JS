@@ -1,5 +1,5 @@
 // import fs from "fs";
-import { segmentDetection } from "./llm.controllers.js/segmentDetection.js";
+import { segmentDetectionText, segmentDetectionImage } from "./llm.controllers.js/segmentDetection.js";
 
 export const initialPrompt = async (req, res) => {
 
@@ -23,6 +23,8 @@ export const initialPrompt = async (req, res) => {
 
     const imagedata = {
         "imageFilebase64": "",
+        "imageDescription": "",
+        "onlyHumanPhotoAdd": false
     }
     // For FormData, the data comes in req.body
     const prompt = req.body.prompt;
@@ -30,8 +32,8 @@ export const initialPrompt = async (req, res) => {
     const imageFile = req.files; // Files come in req.files when using multer
     
     if(!prompt || !mode){
+      console.log('Validation failed: missing prompt or mode');
         return res.status(400).json({ message: "Prompt and mode are required" });
-        console.log('Validation failed: missing prompt or mode');
     }
 
     if(!imageFile && mode === "with_photo"){
@@ -49,12 +51,24 @@ export const initialPrompt = async (req, res) => {
     }
 
 
-    console.log(promptStructure);
-    if(imagedata.imageFilebase64){
-        console.log(imagedata);
+    // console.log(promptStructure);
+    // if(imagedata.imageFilebase64){
+    //     console.log(imagedata);
+    // }
+    let segmentResult;
+    if(promptStructure.mode === "with_photo"){
+      segmentResult = await segmentDetectionImage(promptStructure, imagedata.imageFilebase64);
+    }else{
+      segmentResult = await segmentDetectionText(promptStructure);
     }
+    // console.log(segment);
+    promptStructure.analysis.segment = segmentResult.segment;
+    imagedata.imageDescription = segmentResult.imageDescription;
+    imagedata.onlyHumanPhotoAdd = segmentResult.onlyHumanPhotoAdd;
 
-    await segmentDetection(promptStructure);
+    console.log(promptStructure);
+    console.log(imagedata.imageDescription);
+    console.log(imagedata.onlyHumanPhotoAdd);
 
     
     res.json({ 
