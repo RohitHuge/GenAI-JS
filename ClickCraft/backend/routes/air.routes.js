@@ -1,5 +1,6 @@
 import express from "express";
 import { initialPrompt } from "../controllers/ai.controller.js";
+import { initialPromptMock } from "../controllers/dummy.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -12,6 +13,7 @@ const upload = multer({
 });
 
 router.post('/initialprompt', upload.any(), initialPrompt);
+router.post('/initialprompt-mock', upload.any(), initialPromptMock);
 
 
 export default router;

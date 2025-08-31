@@ -109,7 +109,7 @@ export const initialPrompt = async (req, res) => {
 
     const finalResponse = {
       promptStructure,
-      imageDataMini
+      imagedata
     }
 
 

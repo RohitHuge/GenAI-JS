@@ -3,8 +3,7 @@ import { useThumbnail } from '../components/ThumbnailContext';
 import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
-import { backendUrl } from '../config';
-import log from '../../utilities/log'; 
+import { backendUrl } from '../config'; 
 
 const ThumbnailGenerator = () => {
   const { 
@@ -15,35 +14,75 @@ const ThumbnailGenerator = () => {
     answers, 
     generatedThumbnails, 
     currentStep,
-    dispatch 
+    dispatch ,
+    structuredPrompt
   } = useThumbnail();
+
+  // Custom styles for radio buttons to override browser defaults
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      input[type="radio"] {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-color: transparent;
+        border: 2px solid #404040;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      input[type="radio"]:checked {
+        background-color: #ff6b35;
+        border-color: #ff6b35;
+        box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+      }
+      
+      input[type="radio"]:checked::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 6px;
+        height: 6px;
+        background-color: white;
+        border-radius: 50%;
+      }
+      
+      input[type="radio"]:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.6);
+      }
+      
+      input[type="radio"]:hover {
+        border-color: #ff6b35;
+        transform: scale(1.1);
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   
   const [toasts, setToasts] = useState([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
 
-  // Mock data for development
-  const mockQuestions = [
-    {
-      id: 1,
-      q: "What style should the thumbnail have?",
-      options: ["Modern", "Vintage", "Minimalist", "Bold"],
-      answer: ""
-    }
-    // },
-    // {
-    //   id: 2,
-    //   q: "What emotion should it convey?",
-    //   options: ["Exciting", "Calm", "Professional", "Playful"],
-    //   answer: ""
-    // },
-    // {
-    //   id: 3,
-    //   q: "What color scheme do you prefer?",
-    //   options: ["Warm", "Cool", "Neutral", "Vibrant"],
-    //   answer: ""
-    // }
-  ];
-
+ 
+  // const mockQuestions = [
+  //   { id: 1, q: "What mood should it convey?", options: ["Happy", "Serious", "Mysterious", "Energetic"], answer: "" },
+  //   { id: 2, q: "What color scheme should it use?", options: ["Pastel", "Bright", "Dark", "Warm"], answer: "" },
+  //   { id: 3, q: "What style should it have?", options: ["Retro", "Modern", "Vintage", "Minimalist"], answer: "" },
+  //   { id: 4, q: "What mood should it convey?", options: ["Happy", "Serious", "Mysterious", "Energetic"], answer: "" },
+  //   { id: 5, q: "What color scheme should it use?", options: ["Pastel", "Bright", "Dark", "Warm"], answer: "" },
+  //   { id: 6, q: "What style should it have?", options: ["Retro", "Modern", "Vintage", "Minimalist"], answer: "" }
+  // ];
   const mockThumbnails = [
     { id: 1, url: "https://via.placeholder.com/400x225/ff6b35/ffffff?text=Thumbnail+1", alt: "Generated Thumbnail 1" },
     { id: 2, url: "https://via.placeholder.com/400x225/ff8a5c/ffffff?text=Thumbnail+2", alt: "Generated Thumbnail 2" },
@@ -80,7 +119,7 @@ const ThumbnailGenerator = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'thinking' });
 
-    // const thinkingMessages = ["Thinking...", "Refining prompt...", "Generating questions..."];
+    
     
     try {
       // Send data to backend
@@ -90,36 +129,33 @@ const ThumbnailGenerator = () => {
       if (mode === 'with_photo' && imageFile) {
         formData.append('imageFile', imageFile);
       }
-      const response = await fetch(`${backendUrl}/air/initialprompt`, {
+      // For debugging: use '/air/initialprompt-mock' instead of '/air/initialprompt' to avoid using OpenAI tokens
+      const response = await fetch(`${backendUrl}/air/initialprompt-mock`, {
         method: 'POST',
         body: formData,
       });
       
       if (!response.ok) {
-        console.log('HTTP error! status:', response.status);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('Backend response:', data);
       // Simulate AI thinking for now
       // for (let i = 0; i < thinkingMessages.length; i++) {
       //   setCurrentMessageIndex(i);
       //   await new Promise(resolve => setTimeout(resolve, 2000));
       // }
+      dispatch({ type: 'SET_QUESTIONS', payload: data.finalResponse.promptStructure.questions });
+      dispatch({ type: 'SET_STRUCTURED_PROMPT', payload: data.finalResponse.promptStructure });
       setCurrentMessageIndex(0);
+      
+      // Move to questions step
+      dispatch({ type: 'SET_CURRENT_STEP', payload: 'questions' });
     } catch (error) {
-      log('Error:', error.message);
       addToast('Failed to process request', 'error');
       dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
-
-
-
-    // Set questions and move to questions step
-    dispatch({ type: 'SET_QUESTIONS', payload: mockQuestions });
-    dispatch({ type: 'SET_LOADING', payload: false });
   };
 
   const handleAnswerSubmit = async () => {
@@ -133,17 +169,19 @@ const ThumbnailGenerator = () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'generating' });
 
+
     // Simulate thumbnail generation
     const generatingMessages = ["Finalizing answers...", "Generating thumbnails..."];
     
     for (let i = 0; i < generatingMessages.length; i++) {
       setCurrentMessageIndex(i);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
 
     // Set generated thumbnails
     dispatch({ type: 'SET_GENERATED_THUMBNAILS', payload: mockThumbnails });
     dispatch({ type: 'SET_LOADING', payload: false });
+    dispatch({ type: 'SET_CURRENT_STEP', payload: 'results' });
   };
 
   const handleImageUpload = (e) => {
@@ -334,29 +372,39 @@ const ThumbnailGenerator = () => {
         </p>
 
         <div className="space-y-6">
-          {questions.map((question) => (
+          {questions && questions.length > 0 ? questions.map((question) => (
             <div key={question.id} className="space-y-4">
               <h3 className="text-lg font-medium text-dark-text">
-                {question.q}
+                {question.q || 'Question text not available'}
               </h3>
               
               {/* Quick Options */}
               <div className="grid grid-cols-2 gap-3">
-                {question.options.map((option) => (
-                  <label key={option} className="flex items-center space-x-3 cursor-pointer">
+                {question.options && question.options.map((option) => (
+                  <div key={option} className="flex items-center space-x-3">
                     <input
                       type="radio"
+                      id={`${question.id}-${option}`}
                       name={`question-${question.id}`}
                       value={option}
                       checked={answers[question.id] === option}
-                        onChange={(e) => dispatch({ 
-                        type: 'SET_ANSWER', 
-                        payload: { questionId: question.id, answer: e.target.value } 
-                      })}
-                      className="w-4 h-4 text-neon-orange border-dark-border focus:ring-neon-orange"
+                                             onChange={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         dispatch({ 
+                           type: 'SET_ANSWER', 
+                           payload: { questionId: question.id, answer: e.target.value } 
+                         });
+                       }}
+                                             className="w-4 h-4"
                     />
-                    <span className="text-dark-text-secondary">{option}</span>
-                  </label>
+                    <label 
+                      htmlFor={`${question.id}-${option}`}
+                      className="cursor-pointer text-dark-text-secondary"
+                    >
+                      {option}
+                    </label>
+                  </div>
                 ))}
               </div>
               
@@ -377,12 +425,17 @@ const ThumbnailGenerator = () => {
                 />
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="text-center text-dark-text-secondary">
+              <p>No questions available. Please try again.</p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-center pt-4">
           <button
-            onClick={handleAnswerSubmit}
+            type="button"
+                         onClick={handleAnswerSubmit}
             className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
           >
             Submit All Answers
@@ -405,7 +458,7 @@ const ThumbnailGenerator = () => {
 
       {/* Thumbnails Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {generatedThumbnails.map((thumbnail) => (
+        {generatedThumbnails && generatedThumbnails.length > 0 ? generatedThumbnails.map((thumbnail) => (
           <div key={thumbnail.id} className="bg-dark-bg-card rounded-lg shadow-lg border border-dark-border overflow-hidden hover:shadow-xl transition-shadow duration-200 hover:border-neon-orange">
             <div className="relative group">
               <img
@@ -445,7 +498,11 @@ const ThumbnailGenerator = () => {
               </button>
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="text-center text-dark-text-secondary py-8">
+            <p>No thumbnails generated yet.</p>
+          </div>
+        )}
       </div>
 
       {/* Download All Button */}
@@ -520,7 +577,7 @@ const ThumbnailGenerator = () => {
       </main>
 
       {/* Toast Notifications */}
-      {toasts.map(toast => (
+      {toasts && toasts.length > 0 && toasts.map(toast => (
         <Toast
           key={toast.id}
           message={toast.message}

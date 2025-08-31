@@ -11,7 +11,8 @@ const initialState = {
   generatedThumbnails: [],
   isLoading: false,
   currentStep: 'mode_selection', // mode_selection, prompt_input, thinking, questions, generating, results
-  error: null
+  error: null,
+  structuredPrompt: null,
 };
 
 const thumbnailReducer = (state, action) => {
@@ -23,19 +24,23 @@ const thumbnailReducer = (state, action) => {
     case 'SET_IMAGE_FILE':
       return { ...state, imageFile: action.payload };
     case 'SET_QUESTIONS':
-      return { ...state, questions: action.payload, currentStep: 'questions' };
+      return { ...state, questions: action.payload };
     case 'SET_ANSWER':
+      return { ...state, answers: { ...state.answers, [action.payload.questionId]: action.payload.answer } };
+    case 'SET_ANSWER_CUSTOM':
       return { ...state, answers: { ...state.answers, [action.payload.questionId]: action.payload.answer } };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_CURRENT_STEP':
       return { ...state, currentStep: action.payload };
     case 'SET_GENERATED_THUMBNAILS':
-      return { ...state, generatedThumbnails: action.payload, currentStep: 'results' };
+      return { ...state, generatedThumbnails: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     case 'RESET':
       return { ...initialState, currentStep: 'mode_selection' };
+    case 'SET_STRUCTURED_PROMPT':
+      return { ...state, structuredPrompt: action.payload };
     default:
       return state;
   }
@@ -45,23 +50,23 @@ export const ThumbnailProvider = ({ children }) => {
   const [state, dispatch] = useReducer(thumbnailReducer, initialState);
 
   // Load state from localStorage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem('clickcraft_thumbnail_state');
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        // Only restore non-file data
-        const { imageFile, ...restoredState } = parsed;
-        Object.keys(restoredState).forEach(key => {
-          if (restoredState[key] !== undefined) {
-            dispatch({ type: `SET_${key.toUpperCase()}`, payload: restoredState[key] });
-          }
-        });
-      } catch (error) {
-        console.error('Failed to parse saved state:', error);
-      }
-    }
-  }, []);
+  // useEffect(() => {
+  //   const savedState = localStorage.getItem('clickcraft_thumbnail_state');
+  //   if (savedState) {
+  //     try {
+  //       const parsed = JSON.parse(savedState);
+  //       // Only restore non-file data
+  //       const { imageFile, ...restoredState } = parsed;
+  //       Object.keys(restoredState).forEach(key => {
+  //         if (restoredState[key] !== undefined) {
+  //           dispatch({ type: `SET_${key.toUpperCase()}`, payload: restoredState[key] });
+  //         }
+  //       });
+  //     } catch (error) {
+  //       console.error('Failed to parse saved state:', error);
+  //     }
+  //   }
+  // }, []);
 
   // Save state to localStorage when questions or answers change
   useEffect(() => {

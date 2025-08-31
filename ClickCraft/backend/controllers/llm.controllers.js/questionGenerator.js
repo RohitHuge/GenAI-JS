@@ -11,7 +11,7 @@ export const QuestionSchema = z.object({
   });
   
   export const QuestionsSchema = z.object({
-    questions: z.array(QuestionSchema), // <-- array of question objects
+    questions: z.array(QuestionSchema).max(5), // <-- array of question objects
   });
 
 
