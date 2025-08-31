@@ -1,5 +1,6 @@
 // import fs from "fs";
 import { segmentDetectionText, segmentDetectionImage } from "./llm.controllers.js/segmentDetection.js";
+import { techBulletPointAnalysis, gamingBulletPointAnalysis, foodBulletPointAnalysis, travelBulletPointAnalysis, educationBulletPointAnalysis, entertainmentBulletPointAnalysis } from "./llm.controllers.js/bulltetPointAnalysis.js";
 
 export const initialPrompt = async (req, res) => {
 
@@ -25,6 +26,11 @@ export const initialPrompt = async (req, res) => {
         "imageFilebase64": "",
         "imageDescription": "",
         "onlyHumanPhotoAdd": false
+    }
+
+    const imageDataMini = {
+      "imageDescription": "",
+      "onlyHumanPhotoAdd": false
     }
     // For FormData, the data comes in req.body
     const prompt = req.body.prompt;
@@ -63,12 +69,39 @@ export const initialPrompt = async (req, res) => {
     }
     // console.log(segment);
     promptStructure.analysis.segment = segmentResult.segment;
-    imagedata.imageDescription = segmentResult.imageDescription;
-    imagedata.onlyHumanPhotoAdd = segmentResult.onlyHumanPhotoAdd;
+    if (mode === "with_photo") {
+      imagedata.imageDescription = segmentResult.imageDescription;
+      imagedata.onlyHumanPhotoAdd = segmentResult.onlyHumanPhotoAdd;
+      imageDataMini.imageDescription = segmentResult.imageDescription;
+      imageDataMini.onlyHumanPhotoAdd = segmentResult.onlyHumanPhotoAdd;
+    }else{
+      imageDataMini.imageDescription = "no image description";
+      imageDataMini.onlyHumanPhotoAdd = false;
+    }
+
+    
+    let bulletPointAnalysisResult;
+
+    if(promptStructure.analysis.segment === "Tech"){
+      bulletPointAnalysisResult = await techBulletPointAnalysis(promptStructure, imageDataMini);
+    }else if(promptStructure.analysis.segment === "Gaming"){
+      bulletPointAnalysisResult = await gamingBulletPointAnalysis(promptStructure, imageDataMini);
+    }else if(promptStructure.analysis.segment === "Food"){
+      bulletPointAnalysisResult = await foodBulletPointAnalysis(promptStructure, imageDataMini);
+    }else if(promptStructure.analysis.segment === "Travel / Vlogs"){
+      bulletPointAnalysisResult = await travelBulletPointAnalysis(promptStructure, imageDataMini);
+    }else if(promptStructure.analysis.segment === "Education / Tutorials"){
+      bulletPointAnalysisResult = await educationBulletPointAnalysis(promptStructure, imageDataMini);
+    }else if(promptStructure.analysis.segment === "Entertainment / Lifestyle"){
+      bulletPointAnalysisResult = await entertainmentBulletPointAnalysis(promptStructure, imageDataMini);
+    }
+
+    promptStructure.analysis.missingBullets = bulletPointAnalysisResult.missingBulletPoints;
+    
 
     console.log(promptStructure);
-    console.log(imagedata.imageDescription);
-    console.log(imagedata.onlyHumanPhotoAdd);
+    console.log(imageDataMini);
+    promptStructure.analysis.missingBullets = bulletPointAnalysisResult.missingBullets;
 
     
     res.json({ 
