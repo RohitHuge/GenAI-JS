@@ -1,8 +1,11 @@
 // import fs from "fs";
 import { segmentDetectionText, segmentDetectionImage } from "./llm.controllers.js/segmentDetection.js";
 import { techBulletPointAnalysis, gamingBulletPointAnalysis, foodBulletPointAnalysis, travelBulletPointAnalysis, educationBulletPointAnalysis, entertainmentBulletPointAnalysis } from "./llm.controllers.js/bulltetPointAnalysis.js";
+import { questionGenerator } from "./llm.controllers.js/questionGenerator.js";
+
 
 export const initialPrompt = async (req, res) => {
+  console.log("Initial prompt received");
 
     const promptStructure ={
   "initialPrompt": "",
@@ -97,14 +100,23 @@ export const initialPrompt = async (req, res) => {
     }
 
     promptStructure.analysis.missingBullets = bulletPointAnalysisResult.missingBulletPoints;
-    
+    const questions = await questionGenerator(promptStructure, imageDataMini);
+    // console.log(questions);
 
+    promptStructure.questions = questions.questions;
     console.log(promptStructure);
     console.log(imageDataMini);
-    promptStructure.analysis.missingBullets = bulletPointAnalysisResult.missingBullets;
+
+    const finalResponse = {
+      promptStructure,
+      imageDataMini
+    }
+
+
+    // promptStructure.analysis.missingBullets = bulletPointAnalysisResult.missingBullets;
 
     
     res.json({ 
-        message: "Initial prompt received"
+        finalResponse
     }).status(200); 
 }
