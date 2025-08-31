@@ -73,6 +73,7 @@ const ThumbnailGenerator = () => {
   
   const [toasts, setToasts] = useState([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
  
   // const mockQuestions = [
@@ -151,6 +152,7 @@ const ThumbnailGenerator = () => {
       
       // Move to questions step
       dispatch({ type: 'SET_CURRENT_STEP', payload: 'questions' });
+      setCurrentQuestionIndex(0);
     } catch (error) {
       addToast('Failed to process request', 'error');
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -166,16 +168,29 @@ const ThumbnailGenerator = () => {
       return;
     }
 
+    // Update the structured prompt with answers
+    if (structuredPrompt) {
+      const updatedStructuredPrompt = {
+        ...structuredPrompt,
+        questions: structuredPrompt.questions.map(question => ({
+          ...question,
+          answer: answers[question.id] || null
+        }))
+      };
+      
+      // Update the context with the completed structured prompt
+      dispatch({ type: 'SET_STRUCTURED_PROMPT', payload: updatedStructuredPrompt });
+    }
+
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'generating' });
-
 
     // Simulate thumbnail generation
     const generatingMessages = ["Finalizing answers...", "Generating thumbnails..."];
     
     for (let i = 0; i < generatingMessages.length; i++) {
       setCurrentMessageIndex(i);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     // Set generated thumbnails
@@ -219,6 +234,7 @@ const ThumbnailGenerator = () => {
     dispatch({ type: 'RESET' });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'mode_selection' });
     setCurrentMessageIndex(0);
+    setCurrentQuestionIndex(0);
   };
 
   // Render different steps
@@ -364,86 +380,200 @@ const ThumbnailGenerator = () => {
     </div>
   );
 
-  const renderQuestions = () => (
-    <Modal isOpen={currentStep === 'questions'} onClose={() => {}} title="Answer Questions" size="lg">
-      <div className="space-y-6">
-        <p className="text-dark-text-secondary text-center">
-          Please answer these questions to help us generate the perfect thumbnail for you.
-        </p>
+    const renderQuestions = () => {
+    const currentQuestion = questions[currentQuestionIndex] || questions[0];
+    const answeredCount = Object.keys(answers).length;
+    const totalQuestions = questions.length;
+    const progressPercentage = (answeredCount / totalQuestions) * 100;
 
-        <div className="space-y-6">
-          {questions && questions.length > 0 ? questions.map((question) => (
-            <div key={question.id} className="space-y-4">
-              <h3 className="text-lg font-medium text-dark-text">
-                {question.q || 'Question text not available'}
-              </h3>
+    const handleNextQuestion = () => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
+    };
+
+    const handlePreviousQuestion = () => {
+      if (currentQuestionIndex > 0) {
+        setCurrentQuestionIndex(currentQuestionIndex - 1);
+      }
+    };
+
+    const handleAnswerSelect = (answer) => {
+      dispatch({ 
+        type: 'SET_ANSWER', 
+        payload: { questionId: currentQuestion.id, answer } 
+      });
+      
+      // Auto-advance to next question after a short delay
+      setTimeout(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+        }
+      }, 500);
+    };
+
+    const handleCustomAnswer = (customAnswer) => {
+      dispatch({ 
+        type: 'SET_ANSWER', 
+        payload: { questionId: currentQuestion.id, answer: customAnswer } 
+      });
+      
+      // Auto-advance to next question after a short delay
+      setTimeout(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+        }
+      }, 500);
+    };
+
+    const handleFinishQuestions = () => {
+      if (answeredCount === totalQuestions) {
+        handleAnswerSubmit();
+      }
+    };
+
+    return (
+      <Modal isOpen={currentStep === 'questions'} onClose={() => {}} title="Answer Questions" size="lg">
+        <div className="space-y-8">
+          {/* Progress Bar */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-dark-text">
+                Question {answeredCount + 1} of {totalQuestions}
+              </span>
+              <span className="text-sm text-neon-orange font-semibold">
+                {answeredCount}/{totalQuestions} Completed
+              </span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-dark-border rounded-full h-3 overflow-hidden">
+              <div 
+                className="h-3 bg-gradient-to-r from-neon-orange to-neon-orange-light rounded-full transition-all duration-500 ease-out shadow-[0_0_8px] shadow-neon-orange/40"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+            
+            {/* Progress Dots */}
+            <div className="flex justify-center space-x-2">
+              {questions.map((_, index) => (
+                <div
+                  key={index}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                    index < answeredCount 
+                      ? 'bg-neon-orange shadow-[0_0_8px] shadow-neon-orange/60' 
+                      : index === currentQuestionIndex 
+                        ? 'bg-neon-orange-light border-2 border-neon-orange' 
+                        : 'bg-dark-border'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Current Question */}
+          {currentQuestion ? (
+            <div className="space-y-6">
+              <div className="text-center space-y-4">
+                <h2 className="text-2xl font-bold text-dark-text">
+                  {currentQuestion.q || 'Question text not available'}
+                </h2>
+                <p className="text-dark-text-secondary">
+                  Select an option or write your own answer
+                </p>
+              </div>
               
-              {/* Quick Options */}
-              <div className="grid grid-cols-2 gap-3">
-                {question.options && question.options.map((option) => (
-                  <div key={option} className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      id={`${question.id}-${option}`}
-                      name={`question-${question.id}`}
-                      value={option}
-                      checked={answers[question.id] === option}
-                                             onChange={(e) => {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         dispatch({ 
-                           type: 'SET_ANSWER', 
-                           payload: { questionId: question.id, answer: e.target.value } 
-                         });
-                       }}
-                                             className="w-4 h-4"
-                    />
-                    <label 
-                      htmlFor={`${question.id}-${option}`}
-                      className="cursor-pointer text-dark-text-secondary"
-                    >
-                      {option}
-                    </label>
-                  </div>
+              {/* Quick Options Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {currentQuestion.options && currentQuestion.options.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => handleAnswerSelect(option)}
+                    className={`p-4 rounded-lg border-2 transition-all duration-200 text-left group ${
+                      answers[currentQuestion.id] === option
+                        ? 'border-neon-orange bg-neon-orange/10 shadow-[0_0_12px] shadow-neon-orange/40'
+                        : 'border-dark-border hover:border-neon-orange hover:bg-neon-orange/5'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-5 h-5 rounded-full border-2 transition-all duration-200 ${
+                        answers[currentQuestion.id] === option
+                          ? 'border-neon-orange bg-neon-orange'
+                          : 'border-dark-border group-hover:border-neon-orange'
+                      }`}>
+                        {answers[currentQuestion.id] === option && (
+                          <div className="w-full h-full rounded-full bg-white transform scale-75" />
+                        )}
+                      </div>
+                      <span className={`font-medium transition-colors duration-200 ${
+                        answers[currentQuestion.id] === option
+                          ? 'text-neon-orange'
+                          : 'text-dark-text group-hover:text-neon-orange'
+                      }`}>
+                        {option}
+                      </span>
+                    </div>
+                  </button>
                 ))}
               </div>
               
               {/* Custom Answer */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-dark-text">
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-dark-text text-center">
                   Or write your own answer:
                 </label>
-                <input
-                  type="text"
-                  value={answers[question.id] || ''}
-                  onChange={(e) => dispatch({ 
-                    type: 'SET_ANSWER', 
-                    payload: { questionId: question.id, answer: e.target.value } 
-                  })}
-                  placeholder="Type your custom answer..."
-                  className="w-full px-3 py-2 border border-dark-border rounded-md focus:ring-2 focus:ring-neon-orange focus:border-transparent bg-dark-bg-card text-dark-text"
-                />
+                <div className="flex space-x-3">
+                  <input
+                    type="text"
+                    value={answers[currentQuestion.id] || ''}
+                    onChange={(e) => handleCustomAnswer(e.target.value)}
+                    placeholder="Type your custom answer..."
+                    className="flex-1 px-4 py-3 border border-dark-border rounded-lg focus:ring-2 focus:ring-neon-orange focus:border-transparent bg-dark-bg-card text-dark-text placeholder-dark-text-secondary"
+                  />
+                  <button
+                    onClick={() => handleCustomAnswer(answers[currentQuestion.id] || '')}
+                    disabled={!answers[currentQuestion.id]}
+                    className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light disabled:bg-dark-border disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+                  >
+                    Use This
+                  </button>
+                </div>
               </div>
             </div>
-          )) : (
-            <div className="text-center text-dark-text-secondary">
+          ) : (
+            <div className="text-center text-dark-text-secondary py-8">
               <p>No questions available. Please try again.</p>
             </div>
           )}
-        </div>
 
-        <div className="flex justify-center pt-4">
-          <button
-            type="button"
-                         onClick={handleAnswerSubmit}
-            className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
-          >
-            Submit All Answers
-          </button>
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center pt-6 border-t border-dark-border">
+            <button
+              onClick={handlePreviousQuestion}
+              disabled={currentQuestionIndex <= 0}
+              className="px-6 py-3 bg-dark-bg-secondary hover:bg-dark-border disabled:bg-dark-border disabled:cursor-not-allowed text-dark-text font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+            >
+              ← Previous
+            </button>
+            
+            <div className="text-center">
+              <span className="text-sm text-dark-text-secondary">
+                {answeredCount === totalQuestions ? 'All questions answered!' : `${totalQuestions - answeredCount} questions remaining`}
+              </span>
+            </div>
+            
+            <button
+              onClick={handleFinishQuestions}
+              disabled={answeredCount < totalQuestions}
+              className="px-8 py-3 bg-neon-orange hover:bg-neon-orange-light disabled:bg-dark-border disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+            >
+              {answeredCount === totalQuestions ? 'Generate Thumbnails' : 'Next →'}
+            </button>
+          </div>
         </div>
-      </div>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   const renderResults = () => (
     <div className="max-w-6xl mx-auto p-6">
