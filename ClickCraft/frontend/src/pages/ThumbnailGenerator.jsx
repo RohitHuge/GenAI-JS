@@ -15,7 +15,8 @@ const ThumbnailGenerator = () => {
     generatedThumbnails, 
     currentStep,
     dispatch ,
-    structuredPrompt
+    structuredPrompt,
+    imagedata
   } = useThumbnail();
 
   // Custom styles for radio buttons to override browser defaults
@@ -163,6 +164,8 @@ const ThumbnailGenerator = () => {
       // }
       dispatch({ type: 'SET_QUESTIONS', payload: data.finalResponse.promptStructure.questions });
       dispatch({ type: 'SET_STRUCTURED_PROMPT', payload: data.finalResponse.promptStructure });
+      console.log(data.finalResponse.imagedata);
+      dispatch({ type: 'SET_IMAGEDATA', payload: data.finalResponse.imagedata });
       setCurrentMessageIndex(0);
       
       // Move to questions step
@@ -197,17 +200,31 @@ const ThumbnailGenerator = () => {
       // Update the context with the completed structured prompt
       dispatch({ type: 'SET_STRUCTURED_PROMPT', payload: updatedStructuredPrompt });
     }
-    console.log(updatedStructuredPrompt);
+    // console.log(updatedStructuredPrompt);
+    // console.log(imagedata);
 
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'generating' });
 
     // Simulate thumbnail generation
-    const generatingMessages = ["Finalizing answers...", "Generating thumbnails..."];
+    // const generatingMessages = ["Finalizing answers...", "Generating thumbnails..."];
     
-    for (let i = 0; i < generatingMessages.length; i++) {
-      setCurrentMessageIndex(i);
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // for (let i = 0; i < generatingMessages.length; i++) {
+    //   setCurrentMessageIndex(i);
+    //   await new Promise(resolve => setTimeout(resolve, 100));
+    // }
+    // const texttosend = JSON.stringify({  updatedStructuredPrompt, imagedata });
+    // console.log(JSON.stringify({ updatedStructuredPrompt, imagedata }));
+    const response = await fetch(`${backendUrl}/air/generate-thumbnails`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ updatedStructuredPrompt, imagedata }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     // Set generated thumbnails

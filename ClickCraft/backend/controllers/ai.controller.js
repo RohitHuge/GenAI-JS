@@ -104,8 +104,8 @@ export const initialPrompt = async (req, res) => {
     // console.log(questions);
 
     promptStructure.questions = questions.questions;
-    console.log(promptStructure);
-    console.log(imageDataMini);
+    // console.log(promptStructure);
+    // console.log(imageDataMini);
 
     const finalResponse = {
       promptStructure,

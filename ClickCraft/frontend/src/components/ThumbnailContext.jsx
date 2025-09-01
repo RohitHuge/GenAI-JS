@@ -13,6 +13,7 @@ const initialState = {
   currentStep: 'mode_selection', // mode_selection, prompt_input, thinking, questions, generating, results
   error: null,
   structuredPrompt: null,
+  imagedata: null,
 };
 
 const thumbnailReducer = (state, action) => {
@@ -41,6 +42,8 @@ const thumbnailReducer = (state, action) => {
       return { ...initialState, currentStep: 'mode_selection' };
     case 'SET_STRUCTURED_PROMPT':
       return { ...state, structuredPrompt: action.payload };
+    case 'SET_IMAGEDATA':
+      return { ...state, imagedata: action.payload };
     default:
       return state;
   }
