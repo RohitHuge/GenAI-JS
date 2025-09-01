@@ -70,10 +70,25 @@ const ThumbnailGenerator = () => {
       document.head.removeChild(style);
     };
   }, []);
-  
+
   const [toasts, setToasts] = useState([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [customInputValue, setCustomInputValue] = useState('');
+
+  // Define currentQuestion before the useEffect that uses it
+  const currentQuestion = questions[currentQuestionIndex] || questions[0];
+
+  // Update custom input value when question changes or when there's an existing answer
+  useEffect(() => {
+    if (currentQuestion && answers[currentQuestion.id]) {
+      setCustomInputValue(answers[currentQuestion.id]);
+    } else {
+      setCustomInputValue('');
+    }
+  }, [currentQuestionIndex, currentQuestion, 
+    // answers
+  ]);
 
  
   // const mockQuestions = [
@@ -131,7 +146,7 @@ const ThumbnailGenerator = () => {
         formData.append('imageFile', imageFile);
       }
       // For debugging: use '/air/initialprompt-mock' instead of '/air/initialprompt' to avoid using OpenAI tokens
-      const response = await fetch(`${backendUrl}/air/initialprompt-mock`, {
+      const response = await fetch(`${backendUrl}/air/initialprompt`, {
         method: 'POST',
         body: formData,
       });
@@ -169,18 +184,20 @@ const ThumbnailGenerator = () => {
     }
 
     // Update the structured prompt with answers
+    let updatedStructuredPrompt = structuredPrompt;
     if (structuredPrompt) {
-      const updatedStructuredPrompt = {
+       updatedStructuredPrompt = {
         ...structuredPrompt,
         questions: structuredPrompt.questions.map(question => ({
           ...question,
           answer: answers[question.id] || null
         }))
       };
-      
+      //console.log(updatedStructuredPrompt);
       // Update the context with the completed structured prompt
       dispatch({ type: 'SET_STRUCTURED_PROMPT', payload: updatedStructuredPrompt });
     }
+    console.log(updatedStructuredPrompt);
 
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'generating' });
@@ -381,16 +398,15 @@ const ThumbnailGenerator = () => {
   );
 
     const renderQuestions = () => {
-    const currentQuestion = questions[currentQuestionIndex] || questions[0];
     const answeredCount = Object.keys(answers).length;
     const totalQuestions = questions.length;
     const progressPercentage = (answeredCount / totalQuestions) * 100;
 
-    const handleNextQuestion = () => {
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      }
-    };
+    // const handleNextQuestion = () => {
+    //   if (currentQuestionIndex < questions.length - 1) {
+    //     setCurrentQuestionIndex(currentQuestionIndex + 1);
+    //   }
+    // };
 
     const handlePreviousQuestion = () => {
       if (currentQuestionIndex > 0) {
@@ -412,25 +428,30 @@ const ThumbnailGenerator = () => {
       }, 500);
     };
 
-    const handleCustomAnswer = (customAnswer) => {
-      dispatch({ 
-        type: 'SET_ANSWER', 
-        payload: { questionId: currentQuestion.id, answer: customAnswer } 
-      });
-      
-      // Auto-advance to next question after a short delay
-      setTimeout(() => {
+    // const handleCustomAnswer = (customAnswer) => {
+    //   // Only update the answer, don't auto-advance
+    //   dispatch({ 
+    //     type: 'SET_ANSWER', 
+    //     payload: { questionId: currentQuestion.id, answer: customAnswer } 
+    //   });
+    // };
+
+    const handleFinishQuestions = () => {
+      if (currentQuestionIndex === questions.length - 1 && currentQuestionAnswered) {
+        // Last question and it's answered, generate thumbnails
+        handleAnswerSubmit();
+      } else if (currentQuestionAnswered) {
+        // Current question is answered, move to next question
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(currentQuestionIndex + 1);
         }
-      }, 500);
-    };
-
-    const handleFinishQuestions = () => {
-      if (answeredCount === totalQuestions) {
-        handleAnswerSubmit();
       }
     };
+
+    // Check if next question is accessible (only when current question is answered)
+    const currentQuestionAnswered = answers[currentQuestion.id];
+    const canGoToNext = currentQuestionAnswered; // Enable button when current question is answered
+    const canGoToPrevious = currentQuestionIndex > 0;
 
     return (
       <Modal isOpen={currentStep === 'questions'} onClose={() => {}} title="Answer Questions" size="lg">
@@ -519,24 +540,42 @@ const ThumbnailGenerator = () => {
               
               {/* Custom Answer */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-dark-text text-center">
+                {/* <label className="block text-sm font-medium text-dark-text text-center">
                   Or write your own answer:
-                </label>
+                </label> */}
                 <div className="flex space-x-3">
-                  <input
+                  {/* <input
                     type="text"
-                    value={answers[currentQuestion.id] || ''}
-                    onChange={(e) => handleCustomAnswer(e.target.value)}
+                    value={customInputValue}
+                    onChange={(e) => setCustomInputValue(e.target.value)}
                     placeholder="Type your custom answer..."
                     className="flex-1 px-4 py-3 border border-dark-border rounded-lg focus:ring-2 focus:ring-neon-orange focus:border-transparent bg-dark-bg-card text-dark-text placeholder-dark-text-secondary"
-                  />
-                  <button
-                    onClick={() => handleCustomAnswer(answers[currentQuestion.id] || '')}
-                    disabled={!answers[currentQuestion.id]}
+                  /> */}
+                  {/* <button
+                    onClick={() => {
+                      // Save the custom answer and then advance
+                      if (customInputValue.trim()) {
+                        dispatch({ 
+                          type: 'SET_ANSWER', 
+                          payload: { questionId: currentQuestion.id, answer: customInputValue.trim() } 
+                        });
+                        
+                        // Clear the input
+                        setCustomInputValue('');
+                        
+                        // Auto-advance to next question after a short delay
+                        setTimeout(() => {
+                          if (currentQuestionIndex < questions.length - 1) {
+                            setCurrentQuestionIndex(currentQuestionIndex + 1);
+                          }
+                        }, 500);
+                      }
+                    }}
+                    disabled={!customInputValue.trim() || currentQuestionIndex >= questions.length - 1}
                     className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light disabled:bg-dark-border disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
                   >
-                    Use This
-                  </button>
+                    {currentQuestionIndex >= questions.length - 1 ? 'Done' : 'Use This'}
+                  </button> */}
                 </div>
               </div>
             </div>
@@ -550,7 +589,7 @@ const ThumbnailGenerator = () => {
           <div className="flex justify-between items-center pt-6 border-t border-dark-border">
             <button
               onClick={handlePreviousQuestion}
-              disabled={currentQuestionIndex <= 0}
+              disabled={!canGoToPrevious}
               className="px-6 py-3 bg-dark-bg-secondary hover:bg-dark-border disabled:bg-dark-border disabled:cursor-not-allowed text-dark-text font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
             >
               ← Previous
@@ -558,16 +597,19 @@ const ThumbnailGenerator = () => {
             
             <div className="text-center">
               <span className="text-sm text-dark-text-secondary">
-                {answeredCount === totalQuestions ? 'All questions answered!' : `${totalQuestions - answeredCount} questions remaining`}
+                {currentQuestionIndex === questions.length - 1 && currentQuestionAnswered 
+                  ? 'All questions answered!' 
+                  : `${totalQuestions - answeredCount} questions remaining`
+                }
               </span>
             </div>
             
             <button
               onClick={handleFinishQuestions}
-              disabled={answeredCount < totalQuestions}
+              disabled={!canGoToNext}
               className="px-8 py-3 bg-neon-orange hover:bg-neon-orange-light disabled:bg-dark-border disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
             >
-              {answeredCount === totalQuestions ? 'Generate Thumbnails' : 'Next →'}
+              {currentQuestionIndex === questions.length - 1 && currentQuestionAnswered ? 'Generate Thumbnails' : 'Next →'}
             </button>
           </div>
         </div>
