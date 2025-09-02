@@ -10,4 +10,13 @@ export const getBase64FromCloudinary = async (url) => {
     // 👇 you can set the MIME dynamically if you know the image type, e.g. jpg/png
     return `data:image/png;base64,${base64}`;
   }
+
+  export const getBase64FromCloudinaryForImage = async (url) => {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    
+    // 👇 you can set the MIME dynamically if you know the image type, e.g. jpg/png
+    return base64;
+  }
   

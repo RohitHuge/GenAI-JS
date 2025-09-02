@@ -1,5 +1,5 @@
 import { finalPromptGeneratorText, finalPromptGeneratorImage } from "./llm.controllers.js/finalPromptGenerator.js";
-import { photoGeneratorText } from "./llm.controllers.js/photoGenerator.js";
+import { photoGeneratorText, photoGeneratorImage } from "./llm.controllers.js/photoGenerator.js";
 
 
 export const generateThumbnails = async (req, res) => {
@@ -36,6 +36,8 @@ export const generateThumbnails = async (req, res) => {
     let imageBuffer;
     if (structuredPrompt.mode === "without_photo") {
         imageBuffer = await photoGeneratorText(finalPrompt);
+    }else if (structuredPrompt.mode === "with_photo") {
+        imageBuffer = await photoGeneratorImage(finalPrompt, imageUrl);
     }
     
     // console.log(JSON.stringify(imageBuffer));

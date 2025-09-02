@@ -319,6 +319,6 @@ Take everything from the orchestration pipeline, and merge it into the best poss
 
     const resText = response.output_text;
     const resJson = JSON.parse(resText);
-    console.log(resJson);
-    // return resJson;
+    // console.log(resJson);
+    return resJson;
 }
