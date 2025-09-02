@@ -2,6 +2,7 @@
 import { segmentDetectionText, segmentDetectionImage } from "./llm.controllers.js/segmentDetection.js";
 import { techBulletPointAnalysis, gamingBulletPointAnalysis, foodBulletPointAnalysis, travelBulletPointAnalysis, educationBulletPointAnalysis, entertainmentBulletPointAnalysis } from "./llm.controllers.js/bulltetPointAnalysis.js";
 import { questionGenerator } from "./llm.controllers.js/questionGenerator.js";
+import { uploadOnCloudinary } from "./cloudinary.js";
 
 
 export const initialPrompt = async (req, res) => {
@@ -9,7 +10,7 @@ export const initialPrompt = async (req, res) => {
 
     const promptStructure ={
   "initialPrompt": "",
-  "isImageBase64": false,
+  "isImageUrl": false,
   "mode": "",
   "analysis": {
     "segment": "",
@@ -26,7 +27,7 @@ export const initialPrompt = async (req, res) => {
 };
 
     const imagedata = {
-        "imageFilebase64": "",
+        "imageUrl": "",
         "imageDescription": "",
         "onlyHumanPhotoAdd": false
     }
@@ -54,9 +55,12 @@ export const initialPrompt = async (req, res) => {
 
     if(mode === "with_photo"){
         // Since we're using memoryStorage, the file data is in imageFile.buffer
-        imagedata.imageFilebase64 = imageFile[0].buffer.toString("base64");
-        promptStructure.isImageBase64 = true;
-        console.log('Image file received');
+        // imagedata.imageFilebase64 = imageFile[0].buffer.toString("base64");
+        // promptStructure.isImageBase64 = true;
+        const imageUrl = await uploadOnCloudinary(imageFile[0].buffer);
+        imagedata.imageUrl = imageUrl.url;
+        promptStructure.isImageUrl = true;
+        console.log('Image file received'+imagedata.imageUrl);
     }
 
 
@@ -66,7 +70,7 @@ export const initialPrompt = async (req, res) => {
     // }
     let segmentResult;
     if(promptStructure.mode === "with_photo"){
-      segmentResult = await segmentDetectionImage(promptStructure, imagedata.imageFilebase64);
+      segmentResult = await segmentDetectionImage(promptStructure, imagedata.imageUrl);
     }else{
       segmentResult = await segmentDetectionText(promptStructure);
     }
