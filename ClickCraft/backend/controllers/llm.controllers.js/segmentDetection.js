@@ -3,6 +3,7 @@
 import z from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
 import {openai} from "../../index.js";
+import { getBase64FromCloudinary } from "../health.js";
 
 
 const CategorySchemaText = z.object({
@@ -82,7 +83,9 @@ const segmentDetectionImageSchema = z.object({
 
 
 
-export const segmentDetectionImage = async (promptStructure, imageBase64) => {
+export const segmentDetectionImage = async (promptStructure, imageUrl) => {
+  const imageBase64 = await getBase64FromCloudinary(imageUrl);
+  console.log('imageBase64 converted');
   const response = await openai.responses.create({
     model: "gpt-4.1-mini",
     input: [
@@ -144,7 +147,7 @@ Do not infer brand/model specifics unless unambiguously visible.`
           },
           {
             type: "input_image",
-            image_url: `data:image/jpeg;base64,${imageBase64}`,
+            image_url: imageBase64,
           },
           
         ]
@@ -157,6 +160,7 @@ Do not infer brand/model specifics unless unambiguously visible.`
 
   const resText = response.output_text;
   const resJson = JSON.parse(resText);
+  console.log('Segment Detection completed');
   return resJson;
 }
 

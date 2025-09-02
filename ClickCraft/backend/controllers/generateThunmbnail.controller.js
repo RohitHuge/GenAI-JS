@@ -14,7 +14,7 @@ export const generateThumbnails = async (req, res) => {
         imageDescription: imageDescription,
         onlyHuman: onlyHuman
     }
-    const imageBase64 = data.imagedata.imageFilebase64;
+    const imageUrl = data.imagedata.imageUrl;
 
     let finalPrompt;
     if (structuredPrompt.mode === "without_photo") {
@@ -22,19 +22,28 @@ export const generateThumbnails = async (req, res) => {
         finalPrompt = response.finalPrompt;
        }
     else if (structuredPrompt.mode === "with_photo") {
-        response = await finalPromptGeneratorImage(structuredPrompt, imageBase64,imagedatamini);
+        finalPrompt = await finalPromptGeneratorImage(structuredPrompt, imageUrl,imagedatamini);
+        finalPrompt = finalPrompt.finalPrompt;
     }
+
+    if(!finalPrompt){
+        return res.status(400).json({ message: "Final prompt not generated" });
+    }
+
     console.log(finalPrompt);
 
-    const imageBuffer = await photoGeneratorText(finalPrompt);
+
+    let imageBuffer;
+    if (structuredPrompt.mode === "without_photo") {
+        imageBuffer = await photoGeneratorText(finalPrompt);
+    }
+    
     // console.log(JSON.stringify(imageBuffer));
     // console.log(imageBuffer.toString('base64'));
 
+
+
+
     const base64Image = imageBuffer.toString('base64');
-
-
-
-    
-
     res.json({ message: 'Thumbnails generated successfully', base64Image }).status(200);
 }
