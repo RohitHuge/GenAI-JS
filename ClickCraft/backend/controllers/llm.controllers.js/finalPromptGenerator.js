@@ -146,7 +146,9 @@ Keep the output in plain text (no JSON).
         });
 
         const resText = response.output_text;
-        console.log(resText);
+        const resJson = JSON.parse(resText);
+        // console.log(resText);
+        return resJson;
 }
 
 

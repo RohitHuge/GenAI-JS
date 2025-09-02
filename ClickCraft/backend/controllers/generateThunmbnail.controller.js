@@ -1,4 +1,5 @@
 import { finalPromptGeneratorText, finalPromptGeneratorImage } from "./llm.controllers.js/finalPromptGenerator.js";
+import { photoGeneratorText } from "./llm.controllers.js/photoGenerator.js";
 
 
 export const generateThumbnails = async (req, res) => {
@@ -17,12 +18,23 @@ export const generateThumbnails = async (req, res) => {
 
     let finalPrompt;
     if (structuredPrompt.mode === "without_photo") {
-        finalPrompt = await finalPromptGeneratorText(structuredPrompt);
+        const response = await finalPromptGeneratorText(structuredPrompt);
+        finalPrompt = response.finalPrompt;
        }
     else if (structuredPrompt.mode === "with_photo") {
-        finalPrompt = await finalPromptGeneratorImage(structuredPrompt, imageBase64,imagedatamini);
+        response = await finalPromptGeneratorImage(structuredPrompt, imageBase64,imagedatamini);
     }
+    console.log(finalPrompt);
+
+    const imageBuffer = await photoGeneratorText(finalPrompt);
+    // console.log(JSON.stringify(imageBuffer));
+    // console.log(imageBuffer.toString('base64'));
+
+    const base64Image = imageBuffer.toString('base64');
+
+
+
     
 
-    res.json({ message: 'Thumbnails generated successfully' }).status(200);
+    res.json({ message: 'Thumbnails generated successfully', base64Image }).status(200);
 }

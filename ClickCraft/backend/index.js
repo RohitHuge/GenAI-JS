@@ -4,7 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 import aiRouter from "./routes/air.routes.js";
 import Openai from "openai";
+import { GoogleGenAI } from "@google/genai";
+
+
 const openai = new Openai({ apiKey: process.env.OPENAI_API_KEY })
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
 
 
@@ -20,4 +24,4 @@ app.listen(port, () => {console.log(`🚀 Server is running on port ${port}`)});
 
 app.use('/air', aiRouter);
 
-export {openai};
+export {openai, gemini};

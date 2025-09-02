@@ -76,6 +76,11 @@ const ThumbnailGenerator = () => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [customInputValue, setCustomInputValue] = useState('');
+  const [enlargedImage, setEnlargedImage] = useState(null);
+
+
+
+
 
   // Define currentQuestion before the useEffect that uses it
   const currentQuestion = questions[currentQuestionIndex] || questions[0];
@@ -226,9 +231,17 @@ const ThumbnailGenerator = () => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
+    const data = await response.json();
+    console.log(data);
+    const base64Image1 = data.base64Image;
+    
+    const imgSrc = `data:image/png;base64,${base64Image1}`;
 
+    const thumbnails = [
+      { id: 1, url: imgSrc, alt: "Generated Thumbnail 1" },
+    ];
     // Set generated thumbnails
-    dispatch({ type: 'SET_GENERATED_THUMBNAILS', payload: mockThumbnails });
+    dispatch({ type: 'SET_GENERATED_THUMBNAILS', payload: thumbnails });
     dispatch({ type: 'SET_LOADING', payload: false });
     dispatch({ type: 'SET_CURRENT_STEP', payload: 'results' });
   };
@@ -246,18 +259,85 @@ const ThumbnailGenerator = () => {
   };
 
   const handleDownload = (thumbnail, format) => {
-    // Simulate download
-    addToast(`${format.toUpperCase()} download started`, 'success');
+    try {
+      // Create a canvas to convert base64 to blob
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        // Convert to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `thumbnail-${thumbnail.id}.${format.toLowerCase()}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            addToast(`${format.toUpperCase()} download completed`, 'success');
+          } else {
+            addToast(`Failed to create ${format} file`, 'error');
+          }
+        }, `image/${format.toLowerCase()}`);
+      };
+      
+      img.onerror = () => {
+        addToast(`Failed to load image for ${format} download`, 'error');
+      };
+      
+      // Set source to trigger onload
+      img.src = thumbnail.url;
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      addToast(`Download failed: ${error.message}`, 'error');
+    }
   };
 
   const handleCopyToClipboard = async (thumbnail) => {
     try {
-      // In a real app, you'd copy the image data
-      await navigator.clipboard.writeText(thumbnail.url);
-      addToast('Copied to clipboard', 'success');
+      // For base64 images, we'll copy the image data
+      // First try to copy as image if supported
+      if (navigator.clipboard && navigator.clipboard.write) {
+        // Convert base64 to blob
+        const response = await fetch(thumbnail.url);
+        const blob = await response.blob();
+        
+        // Create clipboard item
+        const clipboardItem = new ClipboardItem({
+          [blob.type]: blob
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        addToast('Image copied to clipboard', 'success');
+      } else {
+        // Fallback: copy the base64 URL
+        await navigator.clipboard.writeText(thumbnail.url);
+        addToast('Image URL copied to clipboard', 'success');
+      }
     } catch (error) {
-      addToast('Failed to copy to clipboard', 'error');
+      console.error('Copy error:', error);
+      // Fallback: try to copy just the URL
+      try {
+        await navigator.clipboard.writeText(thumbnail.url);
+        addToast('Image URL copied to clipboard', 'success');
+      } catch (fallbackError) {
+        addToast('Failed to copy to clipboard', 'error');
+      }
     }
+  };
+
+  const handleImageEnlarge = (thumbnail) => {
+    setEnlargedImage(thumbnail);
   };
 
   const handleDownloadAll = () => {
@@ -634,8 +714,8 @@ const ThumbnailGenerator = () => {
     );
   };
 
-  const renderResults = () => (
-    <div className="max-w-6xl mx-auto p-6">
+    const renderResults = () => (
+    <div className="max-w-7xl mx-auto p-6">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-neon-orange mb-4 drop-shadow-[0_0_8px] shadow-neon-orange/40">
           Your Generated Thumbnails
@@ -646,72 +726,104 @@ const ThumbnailGenerator = () => {
       </div>
 
       {/* Thumbnails Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {generatedThumbnails && generatedThumbnails.length > 0 ? generatedThumbnails.map((thumbnail) => (
-          <div key={thumbnail.id} className="bg-dark-bg-card rounded-lg shadow-lg border border-dark-border overflow-hidden hover:shadow-xl transition-shadow duration-200 hover:border-neon-orange">
-            <div className="relative group">
-              <img
-                src={thumbnail.url}
-                alt={thumbnail.alt}
-                className="w-full h-48 object-cover cursor-pointer group-hover:scale-105 transition-transform duration-200"
-                onClick={() => window.open(thumbnail.url, '_blank')}
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-                <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-sm font-medium">
-                  Click to enlarge
-                </span>
+          <div key={thumbnail.id} className="bg-dark-bg-card rounded-xl shadow-lg border border-dark-border overflow-hidden hover:shadow-2xl transition-all duration-300 hover:border-neon-orange group">
+            {/* Image Card */}
+            <div className="relative">
+              <div 
+                className="w-full h-56 cursor-pointer overflow-hidden"
+                onClick={() => handleImageEnlarge(thumbnail)}
+              >
+                <img
+                  src={thumbnail.url}
+                  alt={thumbnail.alt}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center">
+                    <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </div>
+                    <span className="text-white font-medium text-sm">Click to Preview</span>
+                  </div>
+                </div>
               </div>
             </div>
             
+            {/* Card Actions */}
             <div className="p-4 space-y-3">
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleDownload(thumbnail, 'PNG')}
-                  className="flex-1 px-3 py-2 bg-neon-orange hover:bg-neon-orange-light text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+                  className="flex-1 px-3 py-2 bg-neon-orange hover:bg-neon-orange-light text-white text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg hover:scale-105"
                 >
+                  <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                   PNG
                 </button>
                 <button
                   onClick={() => handleDownload(thumbnail, 'JPG')}
-                  className="flex-1 px-3 py-2 bg-neon-orange hover:bg-neon-orange-light text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+                  className="flex-1 px-3 py-2 bg-neon-orange hover:bg-neon-orange-light text-white text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg hover:scale-105"
                 >
+                  <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                   JPG
                 </button>
               </div>
               
               <button
                 onClick={() => handleCopyToClipboard(thumbnail)}
-                className="w-full px-3 py-2 bg-dark-bg-secondary hover:bg-dark-border text-dark-text-secondary text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+                className="w-full px-3 py-2 bg-dark-bg-secondary hover:bg-dark-border text-dark-text-secondary text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg hover:scale-105"
               >
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
                 Copy to Clipboard
               </button>
             </div>
           </div>
         )) : (
-          <div className="text-center text-dark-text-secondary py-8">
-            <p>No thumbnails generated yet.</p>
+          <div className="text-center text-dark-text-secondary py-8 col-span-full">
+            <div className="w-24 h-24 bg-dark-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-12 h-12 text-dark-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-lg">No thumbnails generated yet.</p>
+            <p className="text-sm text-dark-text-secondary mt-2">Generate your first thumbnail to see it here!</p>
           </div>
         )}
       </div>
 
-      {/* Download All Button */}
-      <div className="text-center">
+      {/* Action Buttons */}
+      <div className="text-center space-y-4">
         <button
           onClick={handleDownloadAll}
           className="px-8 py-3 bg-neon-orange hover:bg-neon-orange-light text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
         >
+          <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
           Download All as ZIP
         </button>
-      </div>
-
-      {/* Reset Button */}
-      <div className="text-center mt-6">
-        <button
-          onClick={resetFlow}
-          className="px-6 py-2 text-dark-text-secondary hover:text-neon-orange font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
-        >
-          Generate Another Thumbnail
-        </button>
+        
+        <div>
+          <button
+            onClick={resetFlow}
+            className="px-6 py-2 text-dark-text-secondary hover:text-neon-orange font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-dark-bg"
+          >
+            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Generate Another Thumbnail
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -774,6 +886,68 @@ const ThumbnailGenerator = () => {
           onClose={() => removeToast(toast.id)}
         />
       ))}
+
+
+
+
+
+      {/* Image Preview Modal */}
+      {enlargedImage && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-95">
+          {/* Header with close button */}
+          <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-between items-center">
+            <h2 className="text-white text-xl font-semibold">Image Preview</h2>
+            <button
+              onClick={() => setEnlargedImage(null)}
+              className="text-white hover:text-neon-orange text-3xl font-bold bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all duration-200"
+            >
+              ×
+            </button>
+          </div>
+          
+          {/* Image container */}
+          <div className="flex items-center justify-center h-full p-8">
+            <div className="relative max-w-full max-h-full">
+              <img
+                src={enlargedImage.url}
+                alt={enlargedImage.alt}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                style={{ maxHeight: 'calc(100vh - 120px)' }}
+              />
+            </div>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="absolute bottom-0 left-0 right-0 z-10 p-4 bg-gradient-to-t from-black to-transparent">
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => handleDownload(enlargedImage, 'PNG')}
+                className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light text-white font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-black hover:scale-105"
+              >
+                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download PNG
+              </button>
+              <button
+                onClick={() => handleDownload(enlargedImage, 'JPG')}
+                className="px-6 py-3 bg-neon-orange hover:bg-neon-orange-light text-white font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neon-orange focus:ring-offset-2 focus:ring-offset-black hover:scale-105"
+              >
+                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download JPG
+              </button>
+            </div>
+          </div>
+          
+          {/* Click outside to close */}
+          <div 
+            className="absolute inset-0 -z-10"
+            onClick={() => setEnlargedImage(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };
