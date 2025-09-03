@@ -855,22 +855,8 @@ const ThumbnailGenerator = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg">
-      {/* Header */}
-      <header className="bg-dark-bg-secondary shadow-lg border-b border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-neon-orange rounded-lg flex items-center justify-center shadow-[0_0_12px] shadow-neon-orange/60">
-                <span className="text-white font-bold text-xl">C</span>
-              </div>
-              <h1 className="text-2xl font-bold text-dark-text">ClickCraft</h1>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 p-6 lg:p-8">
         {currentStep === 'mode_selection' && renderModeSelection()}
         {currentStep === 'prompt_input' && renderPromptInput()}
         {currentStep === 'questions' && renderQuestions()}
