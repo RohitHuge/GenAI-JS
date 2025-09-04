@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/Home'
 import ThumbnailGenerator from './pages/ThumbnailGenerator'
+import AboutPage from './pages/AboutPage'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -56,6 +57,14 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <ThumbnailGenerator />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/about" element={
+          <ProtectedRoute>
+            <Layout>
+              <AboutPage />
             </Layout>
           </ProtectedRoute>
         } />

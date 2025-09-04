@@ -32,6 +32,28 @@ const Header = () => {
               <h1 className="text-2xl font-bold text-dark-text">ClickCraft</h1>
             </div>
 
+            {/* Navigation Links */}
+            <nav className="hidden md:flex items-center space-x-6">
+              <a
+                href="/dashboard"
+                className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/thumbnail-generator"
+                className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
+              >
+                Generator
+              </a>
+              <a
+                href="/about"
+                className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
+              >
+                About
+              </a>
+            </nav>
+
             {/* User Profile Section */}
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* User Info */}
