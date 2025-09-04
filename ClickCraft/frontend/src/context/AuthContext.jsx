@@ -50,10 +50,14 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   const client = new Client()
-  .setEndpoint(appWriteEndpoint)
-  .setProject(appWriteProjectId);
+    .setEndpoint(appWriteEndpoint)
+    .setProject(appWriteProjectId);
 
   const account = new Account(client);
+
+  // Note: Appwrite security warning about localStorage is expected in development
+  // For production, use a custom domain endpoint for better security
+  // See SECURITY_SETUP.md for detailed instructions
 
 
 
@@ -106,45 +110,44 @@ export const AuthProvider = ({ children }) => {
     // Simulate API call delay
     const session = await account.createEmailPasswordSession(email, password);
     
-    // Dummy validation - accept any email/password combination
-    if (email && password) {
+    try {
+      // Get user data from Appwrite after successful session creation
+      const currentUser = await account.get();
+      
+      // Create user object with Appwrite data
       const user = {
-        id: '1',
-        name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        email: email,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0])}&background=ff6b35&color=fff&size=128`,
+        id: currentUser.$id,
+        name: currentUser.name || email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        email: currentUser.email,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || email.split('@')[0])}&background=ff6b35&color=fff&size=128`,
         role: 'user',
       };
       
-      // const token = session.secret;
-      
-      // Store in localStorage
-      // localStorage.setItem('clickcraft_user', JSON.stringify(user));
-      // localStorage.setItem('clickcraft_token', token);
-      
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: { user,
-          // token: token,
-         },
+        payload: { user },
       });
       
       return { success: true };
-    } else {
+    } catch (error) {
+      console.error('Login error:', error);
       dispatch({ type: 'LOGIN_FAILURE' });
-      return { success: false, error: 'Invalid credentials' };
+      return { success: false, error: error.message || 'Login failed' };
     }
   };
 
   const logout = async () => {
-    // Clear localStorage
-    // localStorage.removeItem('clickcraft_user');
-    // localStorage.removeItem('clickcraft_token');
-    await account.deleteSession();
-    
-    dispatch({ type: 'LOGOUT' });
-
-
+    try {
+      // Delete all sessions for the current user
+      await account.deleteSessions();
+      
+      // Clear any local state
+      dispatch({ type: 'LOGOUT' });
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still dispatch logout even if session deletion fails
+      dispatch({ type: 'LOGOUT' });
+    }
   };
 
   const value = {
