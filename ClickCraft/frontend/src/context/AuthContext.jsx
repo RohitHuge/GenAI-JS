@@ -1,4 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
+import { Client, Account } from 'appwrite';
+import { appWriteEndpoint, appWriteProjectId } from '../config';
 
 const AuthContext = createContext();
 
@@ -6,7 +8,7 @@ const initialState = {
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  token: null,
+  //  token
 };
 
 const authReducer = (state, action) => {
@@ -17,7 +19,7 @@ const authReducer = (state, action) => {
       return {
         ...state,
         user: action.payload.user,
-        token: action.payload.token,
+        // token: action.payload.token,
         isAuthenticated: true,
         isLoading: false,
       };
@@ -25,7 +27,7 @@ const authReducer = (state, action) => {
       return {
         ...state,
         user: null,
-        token: null,
+        // token: null,
         isAuthenticated: false,
         isLoading: false,
       };
@@ -33,7 +35,7 @@ const authReducer = (state, action) => {
       return {
         ...state,
         user: null,
-        token: null,
+        // token: null,
         isAuthenticated: false,
         isLoading: false,
       };
@@ -47,29 +49,54 @@ const authReducer = (state, action) => {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Load user data from localStorage on app start
-  useEffect(() => {
-    const loadUserFromStorage = () => {
-      try {
-        const storedUser = localStorage.getItem('clickcraft_user');
-        const storedToken = localStorage.getItem('clickcraft_token');
-        
-        if (storedUser && storedToken) {
-          const user = JSON.parse(storedUser);
-          dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: { user, token: storedToken },
-          });
-        } else {
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }
-      } catch (error) {
-        console.error('Error loading user from storage:', error);
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    };
+  const client = new Client()
+  .setEndpoint(appWriteEndpoint)
+  .setProject(appWriteProjectId);
 
-    loadUserFromStorage();
+  const account = new Account(client);
+
+
+
+  // Load user data from localStorage on app start
+  useEffect(async () => {
+    // const loadUserFromStorage = () => {
+    //   try {
+    //     const storedUser = localStorage.getItem('clickcraft_user');
+    //     const storedToken = localStorage.getItem('clickcraft_token');
+        
+    //     if (storedUser && storedToken) {
+    //       const user = JSON.parse(storedUser);
+    //       dispatch({
+    //         type: 'LOGIN_SUCCESS',
+    //         payload: { user, token: storedToken },
+    //       });
+    //     } else {
+    //       dispatch({ type: 'SET_LOADING', payload: false });
+    //     }
+    //   } catch (error) {
+    //     console.error('Error loading user from storage:', error);
+    //     dispatch({ type: 'SET_LOADING', payload: false });
+    //   }
+    // };
+
+    // loadUserFromStorage();
+
+    try {
+      const currentUser = await account.get();
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: currentUser
+        // token: null,
+       } });
+    } catch (error) {
+      dispatch({ type: 'LOGIN_FAILURE' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+
+    if (state.user) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'User not found' };
+    }
   }, []);
 
   // Dummy authentication function
@@ -77,7 +104,7 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
     
     // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const session = await account.createEmailPasswordSession(email, password);
     
     // Dummy validation - accept any email/password combination
     if (email && password) {
@@ -89,15 +116,17 @@ export const AuthProvider = ({ children }) => {
         role: 'user',
       };
       
-      const token = 'dummy_token_' + Date.now();
+      // const token = session.secret;
       
       // Store in localStorage
-      localStorage.setItem('clickcraft_user', JSON.stringify(user));
-      localStorage.setItem('clickcraft_token', token);
+      // localStorage.setItem('clickcraft_user', JSON.stringify(user));
+      // localStorage.setItem('clickcraft_token', token);
       
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: { user, token },
+        payload: { user,
+          // token: token,
+         },
       });
       
       return { success: true };
@@ -107,12 +136,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     // Clear localStorage
-    localStorage.removeItem('clickcraft_user');
-    localStorage.removeItem('clickcraft_token');
+    // localStorage.removeItem('clickcraft_user');
+    // localStorage.removeItem('clickcraft_token');
+    await account.deleteSession();
     
     dispatch({ type: 'LOGOUT' });
+
+
   };
 
   const value = {
