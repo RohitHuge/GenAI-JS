@@ -40,12 +40,18 @@ const Header = () => {
               >
                 Dashboard
               </a>
-              <a
+              {/* <a
                 href="/thumbnail-generator"
                 className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
               >
                 Generator
               </a>
+              <a
+                href="/images-library"
+                className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
+              >
+                Library
+              </a> */}
               <a
                 href="/about"
                 className="text-dark-text-secondary hover:text-neon-orange transition-colors duration-200 font-medium"
